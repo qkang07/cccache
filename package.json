@@ -1,0 +1,32 @@
+{
+  "name": "mapu",
+  "description": "a geographic visualization tool based on amap",
+  "version": "0.1.0",
+  "private": false,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack",
+    "tb": "yarn build && cp dist/index.js ../ugraph/src/common/mapu.js",
+    "t": "tsc src/main.ts && node src/main.js"
+  },
+  "dependencies": {
+    "@types/jest": "^24.0.18",
+    "dayjs": "^1.8.26",
+    "nanoid": "^2.1.7",
+    "pako": "^1.0.11"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.5",
+    "@babel/preset-env": "^7.6.0",
+    "@types/node": "^12.7.4",
+    "@types/webpack-env": "^1.14.0",
+    "babel-loader": "^8.0.6",
+    "core-js": "^3.4.8",
+    "ts-loader": "^6.0.4",
+    "typescript": "^3.4.3",
+    "webpack": "^4.39.3",
+    "webpack-cli": "^3.3.8"
+  },
+  "author": "qk",
+  "license": "ISC"
+}
