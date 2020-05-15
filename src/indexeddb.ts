@@ -1,4 +1,4 @@
-import { resolve } from 'dns';
+import { IStoreUnit } from '.';
 
 
 
@@ -10,8 +10,7 @@ class CCIndexedDB {
         return new Promise((res, rej) => {
             let req = window.indexedDB.open('cccache')
             req.onsuccess = (ev) => {
-                
-                let db = req.result
+                this.db = req.result
                 this.status = 'open'
                 res()
             }
@@ -24,6 +23,7 @@ class CCIndexedDB {
             req.onupgradeneeded = ev => {
                 this.db = (ev.target as any).result
                 this.status = 'open'
+                debugger
                 if (!this.db.objectStoreNames.contains('d')) {
                     let store = this.db.createObjectStore('d', {
                         keyPath: 'key',
@@ -36,6 +36,9 @@ class CCIndexedDB {
     }
     private trans(process:(store:any)=>any,mode = 'readwrite') {
         return new Promise((res, rej) => {
+            if (this.status !== 'open') {
+                return
+            }
             let trans = this.db.transaction(['d'],mode)
             let store = trans.objectStore('d')
             let req = process(store)
@@ -47,7 +50,7 @@ class CCIndexedDB {
             }
         })
     }
-    set(key, value, ) {
+    set(key, value:IStoreUnit) {
         return this.trans(store => {
             return store.put({
                 key,value
@@ -55,7 +58,7 @@ class CCIndexedDB {
         })
     }
 
-    get(key) {
+    get(key):Promise<IStoreUnit> {
         return this.trans(store => {
             return store.get(key)
         },'readonly')
@@ -65,7 +68,10 @@ class CCIndexedDB {
     }
 
     all() {
-        return new Promise<any[]>((res, rej) => {
+        return new Promise<IStoreUnit[]>((res, rej) => {
+            if (this.status !== 'open') {
+                return
+            }
             let trans = this.db.transaction(['d'], 'readonly')
             let store = trans.objectStore('d')
             let result = []
@@ -83,4 +89,4 @@ class CCIndexedDB {
 
 }
 
-export const ccidb = new CCIndexedDB()
+export const idb = new CCIndexedDB()

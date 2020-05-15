@@ -23,7 +23,8 @@
     "babel-loader": "^8.0.6",
     "core-js": "^3.4.8",
     "ts-loader": "^6.0.4",
-    "typescript": "^3.4.3",
+    "ts-node": "^8.10.1",
+    "typescript": "^3.9.2",
     "webpack": "^4.39.3",
     "webpack-cli": "^3.3.8"
   },

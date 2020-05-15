@@ -1,25 +1,7 @@
+
 import { IConfig } from '.';
-import dayjs, { UnitType } from 'dayjs'
-// import pako from 'pako'
-
-export const promise = (res, rej) => {
-    
-}
-
-export const genNow = () => {
-    let now = new Date()
-    let v = now.getFullYear()
-    v = v * 100 + (now.getMonth() + 1)
-    v = v * 100 + now.getDate()
-    v = v * 100 + now.getHours()
-    v = v * 100 + now.getMinutes()
-    return v
-}
-
-export const makeExpire = (config: IConfig) => {
-    if (!config.expire) {
-        return 0
-    }
+const dayjs = require('dayjs')
+const makeExpire = (config: IConfig) => {
     if (config.expire[0] === 'in') {
         let expiredIn = config.expire[1]
         if (/[0-9]+(Y|M|D|h|m|s|t)/.test(expiredIn)) {
@@ -27,7 +9,6 @@ export const makeExpire = (config: IConfig) => {
             let num = Number(expiredIn.substr(0, expiredIn.length - 1))
             // console.log(type, num)
             let expire = new Date()
-            console.log(expire.getTime())
             switch (type) {
                 case 'Y': expire.setFullYear(expire.getFullYear() + num); break;
                 case 'M': expire.setMonth(expire.getMonth() + num); break;
@@ -38,8 +19,6 @@ export const makeExpire = (config: IConfig) => {
                 case 't': expire.setMilliseconds(expire.getMilliseconds() + num); break;
                 default: expire = null;
             }
-            console.log(expire.getTime())
-
             if (expire) {
                 return expire.getTime()
             } else {
@@ -51,7 +30,7 @@ export const makeExpire = (config: IConfig) => {
     } else if (config.expire[0] === 'at') {
         let at = config.expire[1]
         let now = dayjs()
-        const subValuesList:UnitType[] = ['month', 'date', 'hour', 'minute', 'second', 'millisecond']
+        const subValuesList = ['month', 'date', 'hour', 'minute', 'second', 'millisecond']
 
         const parser = (format, lastUnit, prefix = '') => {
             let currentStr = now.format(format)
@@ -62,7 +41,7 @@ export const makeExpire = (config: IConfig) => {
             if (prefix) {
                 // 前缀标识的类型
                 
-                let currentUnit :UnitType = subValuesList[unitIndex + 1]
+                let currentUnit = subValuesList[unitIndex + 1]
                 atValue = Number(at.replace(prefix, ''))
                 console.log(currentUnit, atValue, currentStr, at)
 
@@ -160,59 +139,36 @@ export const makeExpire = (config: IConfig) => {
     }
 }
 
-export const checkExpired = (expire: number) => {
-    if (!expire) {
-        return false
-    }
-    let now = Date.now()
-    return now >= expire
+
+let config: IConfig = {}
+
+
+function test(c: IConfig) {
+    let time = makeExpire(c)
+    console.log(dayjs(time).format('YYYY-MM-DD HH:mm:ss'),c.expire)
 }
 
-/**
- * 深拷贝
- * @param {*} obj 拷贝对象(object or array)
- * @param {*} cache 缓存数组
- */
-export function deepCopy (obj, cache = []) {
-    // typeof [] => 'object'
-    // typeof {} => 'object'
-    if (obj === null || typeof obj !== 'object') {
-      return obj
-    }
-    // 如果传入的对象与缓存的相等, 则递归结束, 这样防止循环
-    /**
-     * 类似下面这种
-     * var a = {b:1}
-     * a.c = a
-     * 资料: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value
-     */
-    const hit = cache.filter(c => c.original === obj)[0]
-    if (hit) {
-      return hit.copy
-    }
-  
-    const copy = Array.isArray(obj) ?  [] :   {}
-    // 将copy首先放入cache, 因为我们需要在递归deepCopy的时候引用它
-    cache.push({
-      original: obj,
-      copy
-    })
-    Object.keys(obj).forEach(key => {
-      copy[key] = deepCopy(obj[key], cache)
-    })
-  
-    return copy
-}
-  
-export const zip = (obj:any) => {
-    // let str = JSON.stringify(obj)
-    // str = pako.deflate(str, { to: 'string' })
-    // return str
-    return obj
-}
-
-export const unzip = (str:any) => {
-    // str = pako.inflate(str, { to: 'string' })
-    // return JSON.parse(str)
-    return str
-}
+config.expire = ['in','2Y']
+test(config)
+config.expire = ['in','3D']
+test(config)
+config.expire = ['at','08:00:00']
+test(config)
+config.expire = ['at','04:00']
+test(config)
+config.expire = ['at','6-15']
+test(config)
+config.expire = ['at','08:00:00']
+test(config)
+config.expire = ['at','M3']
+test(config)
+config.expire = ['at','D3']
+test(config)
+config.expire = ['at','d5']
+test(config)
+config.expire = ['at','h14']
+test(config)
+config.expire = ['at','m23']
+test(config)
+config.expire = ['at','s23']
+test(config)

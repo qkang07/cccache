@@ -1,57 +1,30 @@
-import { IStoreDriver } from ".";
-import { genNow } from '@/helper';
-import pako from 'pako'
+import { IStoreDriver, IStoreUnit, IConfig } from ".";
+import { genNow } from './helper';
 
 const ExpiredSymbol = Symbol('expired')
 class CCLocalStorage implements IStoreDriver {
-    private valProcess(v: string) {
-        let splitIndex = v.lastIndexOf('|')
-        let subfix = v.substr(splitIndex)
-        if (subfix && /\d[12]/.test(subfix)) {
-            let expire = Number(subfix)
-            let now = genNow()
-            if (expire < now) {
-                return ExpiredSymbol
-            } else {
-                v = v.substring(0,splitIndex)
-            }
-        } 
-        try {
-            let obj = JSON.parse(v)
-            return obj
-        } catch (e) {
-            return v
-        }
-    }
-    set(key, value) {
-        let str
-        if (typeof value === 'string') {
-            str = value
-        } else {
-            str = JSON.stringify(value)
-        }
+    set(key, unit: IStoreUnit) {
+        key = 'cccache-'+key
+        let str = JSON.stringify(unit)
         localStorage.setItem(key, str)
     }
-    get(key) {
+    get(key): IStoreUnit {
+        key = 'cccache-'+key
         let v = localStorage.getItem(key)
         if (v) {
-            let ret = this.valProcess(v)
-            if (ret === ExpiredSymbol) {
-                this.del(key)
-                return undefined
-            }
+            return JSON.parse(v)
         }
-        return v
+        return null
     }
-    flash(key) {
+    flash(key): IStoreUnit {
+        key = 'cccache-'+key
         let v = this.get(key)
         this.del(key)
         return v
     }
     del(key) {
+        key = 'cccache-'+key
         localStorage.removeItem(key)
     }
-    checkAll() {
-        
-    }
 }
+export const ldb = new CCLocalStorage()

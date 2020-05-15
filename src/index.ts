@@ -1,55 +1,60 @@
-import pako from 'pako'
-import { ccidb } from '@/indexeddb';
-import { makeExpire, deepCopy } from '@/helper';
-type StoreLevel = 'mem'|'local'|'db'
+import { idb } from './indexeddb';
+import { makeExpire, deepCopy, zip, unzip, checkExpired } from './helper';
+import { ldb } from './localStorage';
+type StoreLevel = 'mem'|'local'
 export type IConfig  = {
-    level:StoreLevel
-    expiredAt: string|Date|number
-    expiredIn: string
+    level?:StoreLevel
+    // expiredAt?: string|Date|number
+    // expiredIn?: string
+    // expireEvery?: string
+    expire?:['at'|'in', string]
+    zip?:boolean
 }
 
-interface StoreUnit {
+
+export interface IStoreUnit {
     key?: any
     value?: any
     expire?: number
     level?: StoreLevel
+    zip?: boolean
+    createdAt?:number
 }
 
 export interface IStoreDriver {
     set(key, value):void
     get(key): any
     del(key): void
-    checkAll(): void
 }
 
 
 export default class CCCache {
     private config: IConfig
+    private initTime: number
+    private memCache: Map<any, IStoreUnit> = new Map()
     
-    private memCache: Map<any, StoreUnit> = new Map()
-    
-    private lsRegs: Map<any, StoreUnit> = new Map()
-    private idbRegs: Map<any, StoreUnit> = new Map()
     constructor() {
-        
-        ccidb.open().then(res => {
+        this.initTime = Date.now()
+        idb.open().then(res => {
+            // 因为开启比较慢，对于首次加载时存入的值写入
             this.loadIndexedDB()
         })
     }
-
+    
     loadIndexedDB() {
-        let now = Date.now()
         let expired = []
-        ccidb.all().then(res => {
-            res.forEach(item=>{
-                if (item.expire < now) {
+        idb.all().then(res => {
+            res.forEach(item => {
+                
+                if (checkExpired(item.expire)) {
                     expired.push(item.key)
                 } else {
-                    this.idbRegs.set(item.key, { expire: item.expire })
-                    this.memCache.set(item.key, {
-                        ...item,
-                    })
+                    console.log(item, deepCopy(item))
+                    this.memCache.set(item.key, deepCopy(item.value))
                 }
+            })
+            expired.forEach(key => {
+                idb.del(key)
             })
         })
     }
@@ -58,14 +63,13 @@ export default class CCCache {
         let now = Date.now()
         for (let i = 0; i < localStorage.length; i++){
             let key = localStorage.key(i)
-            if (key.indexOf('cccache') >= 0) {
-                let item = localStorage.getItem(key)
-                let obj:StoreUnit = JSON.parse(item)
-                if (obj.expire < now) {
+            if (key.indexOf('cccache-') === 0) {
+
+                let item = ldb.get(key.replace('cccache-', ''))
+                if(checkExpired(item.expire)){
                     expired.push(key)
                 } else {
-                    this.memCache.set(obj.key, obj)
-                    this.lsRegs.set(obj.key, {expire:obj.expire})
+                    this.memCache.set(item.key, item)
                 }
             }
         }
@@ -75,29 +79,51 @@ export default class CCCache {
     }
 
     setConfig(config: IConfig) {
-        
+        this.config = config
     }
     set(key, value, config?: IConfig) {
-        let unit: StoreUnit = {
+        let unit: IStoreUnit = {
             value: deepCopy(value)
         }
-        if (config) {
-            unit.expire = makeExpire(config)
-            unit.level = config.level || 'mem'
+        config = Object.assign({},config, this.config)
+        unit.expire = makeExpire(config)
+        console.log(unit.expire, Date.now())
+        unit.level = config.level || 'mem'
+        unit.zip = config.zip || false
+        unit.createdAt = Date.now()
+        if (unit.zip) {
+            unit.value = zip(unit.value)
         }
         this.memCache.set(key, unit)
-        ccidb.set(key, unit)
-    }
-    get(key,level?:StoreLevel) {
-        let item = this.memCache.get(key)
-        if (item && item.level) {
-            return item
+        if (unit.level === 'local') {
+            ldb.set(key, unit)
         }
+        idb.set(key, unit)
     }
-    del(key, level:StoreLevel) {
+    get(key, level?: StoreLevel) {
         
+        let item = this.memCache.get(key)
+        if (!item || level && item.level !== level) {
+            item = ldb.get(key)
+        } 
+        if (item) {
+            
+            if (checkExpired(item.expire)) {
+                console.log('expired')
+                this.del(key)
+            } else if (item.zip) {
+                return unzip(item.value)
+            } else {
+                return item.value
+            }
+        }
+        return undefined
     }
-    clear() {
-        
+    del(key, level?:StoreLevel) {
+        this.memCache.delete(key)
+        if (!level || level === 'local') {
+            ldb.del(key)
+        } 
+        idb.del(key)
     }
 }
